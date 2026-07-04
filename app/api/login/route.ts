@@ -1,10 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import {
   createSessionToken,
   isPasswordAllowed,
   SESSION_COOKIE,
   SESSION_MAX_AGE,
 } from "@/lib/auth";
+import { notifyLogin } from "@/lib/mattermost";
 
 export const runtime = "nodejs";
 
@@ -61,6 +62,7 @@ export async function POST(req: NextRequest) {
   const normalizedEmail = email.trim().toLowerCase();
   // Tracking: who accessed the demo (email is unverified, for attribution only).
   console.log(`[access] login email=${normalizedEmail} ip=${ip}`);
+  after(() => notifyLogin(normalizedEmail, ip));
 
   const token = await createSessionToken(normalizedEmail);
   const res = NextResponse.json({ ok: true });

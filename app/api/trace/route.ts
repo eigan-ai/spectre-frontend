@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { Client } from "@gradio/client";
 import type { TraceReport } from "@/lib/spectre";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth";
+import { notifyTrace } from "@/lib/mattermost";
 
 // The Gradio client needs Node APIs (not the Edge runtime). ZeroGPU cold
 // starts can be slow, so ask for a long execution window — note this is
@@ -89,10 +90,21 @@ export async function POST(req: NextRequest) {
       );
     }
     const report = JSON.parse(raw) as TraceReport;
-    // Attribution logging: who ran what (email from the signed session).
+    // Attribution: who ran what (email from the signed session).
     const session = await verifySessionToken(req.cookies.get(SESSION_COOKIE)?.value);
+    const email = session?.email ?? "unknown";
     console.log(
-      `[trace] email=${session?.email ?? "unknown"} chars=${text.length} verdict=${report.verdict} tier=${report.signal?.tier}`,
+      `[trace] email=${email} chars=${text.length} verdict=${report.verdict} tier=${report.signal?.tier}`,
+    );
+    // Emit to Mattermost after the response is sent (no added latency).
+    after(() =>
+      notifyTrace({
+        email,
+        text,
+        verdict: report.verdict,
+        tier: report.signal?.tier ?? "unknown",
+        traceMs: report.trace_time_ms,
+      }),
     );
     return NextResponse.json(report, { status: 200 });
   } catch (err) {

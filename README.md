@@ -37,6 +37,13 @@ npm run dev
 # open http://localhost:3000  → you'll hit the login gate first
 ```
 
+### Mattermost notifications (optional)
+Set **`MATTERMOST_WEBHOOK_URL`** to an incoming-webhook URL and the app posts to that
+channel on every **login** (email + IP) and **trace** (email + prompt + verdict, colored
+by signal tier). Best-effort and non-blocking (`after()`), so it never adds latency or
+breaks a request. Unset → disabled. Optional `MATTERMOST_CHANNEL` overrides the webhook's
+default channel. To log metadata only, remove the "Prompt" field in `lib/mattermost.ts`.
+
 ### Access gate
 The site is behind a login (`middleware.ts` → `/login`). Users enter an **email**
 (captured for tracking only — not verified) and a **password**. Valid passwords are
