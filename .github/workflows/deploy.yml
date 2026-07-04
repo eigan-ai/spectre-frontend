@@ -25,13 +25,26 @@ jobs:
     # Skip if Vercel isn't wired up yet, so the repo is still pushable.
     if: ${{ github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Check Vercel is configured
+        id: guard
+        run: |
+          if [ -z "${{ secrets.VERCEL_TOKEN }}" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Vercel secrets not set yet — skipping deploy. Add VERCEL_TOKEN / VERCEL_ORG_ID / VERCEL_PROJECT_ID to enable."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.guard.outputs.configured == 'true'
+        uses: actions/checkout@v4
+      - if: steps.guard.outputs.configured == 'true'
+        uses: actions/setup-node@v4
         with:
           node-version: 22
       - name: Install Vercel CLI
+        if: steps.guard.outputs.configured == 'true'
         run: npm i -g vercel@latest
       - name: Resolve environment
+        if: steps.guard.outputs.configured == 'true'
         id: env
         run: |
           if [ "${{ github.ref }}" = "refs/heads/main" ]; then
@@ -42,10 +55,13 @@ jobs:
             echo "prod_flag=" >> "$GITHUB_OUTPUT"
           fi
       - name: Pull Vercel project settings
+        if: steps.guard.outputs.configured == 'true'
         run: vercel pull --yes --environment=${{ steps.env.outputs.target }} --token=${{ secrets.VERCEL_TOKEN }}
       - name: Build
+        if: steps.guard.outputs.configured == 'true'
         run: vercel build ${{ steps.env.outputs.prod_flag }} --token=${{ secrets.VERCEL_TOKEN }}
       - name: Deploy
+        if: steps.guard.outputs.configured == 'true'
         run: |
           URL=$(vercel deploy --prebuilt ${{ steps.env.outputs.prod_flag }} --token=${{ secrets.VERCEL_TOKEN }})
           echo "Deployed to $URL"
