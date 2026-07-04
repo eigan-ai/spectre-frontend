@@ -1,0 +1,124 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+  Eigan brand tokens — source of truth: Figma "Eigan-Brand-Guidelines"
+  (guidelines/BRAND.md + src/styles/theme.css). Discipline: light ground,
+  Midnight Navy text, hairline borders, radius 0–2px, NO gradients, NO
+  drop shadows. Whitespace is structural.
+*/
+:root {
+  --font-size: 16px;
+
+  --background: #ffffff;
+  --foreground: #1b2355; /* Midnight Navy */
+  --card: #f8f9fc; /* very light navy tint */
+  --card-foreground: #1b2355;
+  --popover: #ffffff;
+  --popover-foreground: #1b2355;
+  --primary: #1b2355;
+  --primary-foreground: #ffffff;
+  --secondary: #f0f2f8;
+  --secondary-foreground: #1b2355;
+  --muted: #e8eaef;
+  --muted-foreground: #6b7280;
+  --accent: #00b0d8; /* Open Cyan */
+  --accent-foreground: #ffffff;
+  --destructive: #d4183d;
+  --destructive-foreground: #ffffff;
+  --border: rgba(27, 35, 85, 0.1);
+  --border-hairline: rgba(27, 35, 85, 0.08);
+  --input: transparent;
+  --input-background: #f0f2f8;
+  --ring: #2855a0; /* Signal Blue */
+  --radius: 0.125rem; /* 2px — precise, not rounded */
+
+  /* Named brand palette (data-viz order: navy → blue → cyan → green → lime) */
+  --eigan-navy: #1b2355;
+  --eigan-signal-blue: #2855a0;
+  --eigan-cyan: #00b0d8;
+  --eigan-green: #3a8f3a; /* Clarity Green */
+  --eigan-lime: #8dc63f; /* Lime Logic */
+
+  /*
+    Verdict signal scale (3 tiers). Amber (--signal-observed) is the ONE
+    sanctioned extension to the Eigan palette — the brand has no native
+    warning color, and the investor-facing traffic-light needs a middle tier.
+  */
+  --signal-enforced: #d4183d;
+  --signal-observed: #e8a33d;
+  --signal-clean: #3a8f3a;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-input-background: var(--input-background);
+  --color-ring: var(--ring);
+
+  --color-eigan-navy: var(--eigan-navy);
+  --color-eigan-signal-blue: var(--eigan-signal-blue);
+  --color-eigan-cyan: var(--eigan-cyan);
+  --color-eigan-green: var(--eigan-green);
+  --color-eigan-lime: var(--eigan-lime);
+
+  --color-signal-enforced: var(--signal-enforced);
+  --color-signal-observed: var(--signal-observed);
+  --color-signal-clean: var(--signal-clean);
+
+  --font-display: var(--font-barlow);
+  --font-sans: var(--font-dm-sans);
+  --font-mono: var(--font-jetbrains-mono);
+
+  --radius-sm: var(--radius);
+  --radius-md: var(--radius);
+  --radius-lg: var(--radius);
+  --radius-xl: 0.25rem;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  html {
+    font-size: var(--font-size);
+  }
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans), system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display), system-ui, sans-serif;
+    letter-spacing: -0.01em;
+  }
+  /* Section labels / system tags: uppercase, wide-tracked mono (BRAND rule). */
+  .label-system {
+    font-family: var(--font-mono), monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.3em;
+    font-size: 0.6875rem;
+    color: var(--muted-foreground);
+  }
+}
