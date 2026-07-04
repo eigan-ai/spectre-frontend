@@ -4,7 +4,6 @@ import { useCallback, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowRight, AlertTriangle } from "lucide-react";
 import type { ExamplePrompt, TraceReport } from "@/lib/spectre";
-import { SiteHeader } from "@/components/site-header";
 import { ExamplePrompts } from "@/components/example-prompts";
 import { SignalIndicator } from "@/components/signal-indicator";
 import { VerdictPanel } from "@/components/verdict-panel";
@@ -61,9 +60,7 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="flex min-h-full flex-col">
-      <SiteHeader />
-
+    <>
       <main className="mx-auto w-full max-w-[1200px] flex-1 px-8 py-16 md:py-24">
         {/* Hero — restrained, no gradient. The story is in the data. */}
         <section className="max-w-2xl">
@@ -219,6 +216,6 @@ export default function Home() {
           </p>
         </div>
       </footer>
-    </div>
+    </>
   );
 }

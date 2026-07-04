@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Client } from "@gradio/client";
 import type { TraceReport } from "@/lib/spectre";
+import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth";
 
 // The Gradio client needs Node APIs (not the Edge runtime). ZeroGPU cold
 // starts can be slow, so ask for a long execution window — note this is
@@ -88,6 +89,11 @@ export async function POST(req: NextRequest) {
       );
     }
     const report = JSON.parse(raw) as TraceReport;
+    // Attribution logging: who ran what (email from the signed session).
+    const session = await verifySessionToken(req.cookies.get(SESSION_COOKIE)?.value);
+    console.log(
+      `[trace] email=${session?.email ?? "unknown"} chars=${text.length} verdict=${report.verdict} tier=${report.signal?.tier}`,
+    );
     return NextResponse.json(report, { status: 200 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";

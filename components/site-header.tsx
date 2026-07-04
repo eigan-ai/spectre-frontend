@@ -1,4 +1,11 @@
-export function SiteHeader() {
+import { cookies } from "next/headers";
+import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth";
+import { LogoutButton } from "@/components/logout-button";
+
+export async function SiteHeader() {
+  const token = (await cookies()).get(SESSION_COOKIE)?.value;
+  const session = await verifySessionToken(token);
+
   return (
     <header className="w-full border-b border-[var(--border-hairline)]">
       <div className="mx-auto flex max-w-[1200px] items-center justify-between px-8 py-5">
@@ -13,9 +20,19 @@ export function SiteHeader() {
           <span className="h-4 w-px bg-[var(--border)]" />
           <span className="label-system">Spectre CIA</span>
         </div>
-        <span className="hidden font-[var(--font-mono)] text-xs text-muted-foreground sm:inline">
-          a sensor, not a guardrail
-        </span>
+        {session ? (
+          <div className="flex items-center gap-4">
+            <span className="hidden font-[var(--font-mono)] text-xs text-muted-foreground sm:inline">
+              {session.email}
+            </span>
+            <span className="hidden h-4 w-px bg-[var(--border)] sm:block" />
+            <LogoutButton />
+          </div>
+        ) : (
+          <span className="hidden font-[var(--font-mono)] text-xs text-muted-foreground sm:inline">
+            a sensor, not a guardrail
+          </span>
+        )}
       </div>
     </header>
   );

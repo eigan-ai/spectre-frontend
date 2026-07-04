@@ -25,15 +25,25 @@ full structured report (see `lib/spectre.ts` for the typed contract).
 ## Local development
 
 ```bash
-# 1. Provide the HF token the proxy uses (server-only).
+# 1. Configure env (server-only).
 cp .env.example .env.local
-#   then edit .env.local and set HF_TOKEN=hf_...   (a read token is enough)
+#   HF_TOKEN        = hf_...            (read token is enough)
+#   ACCESS_PASSWORDS = internal_admin   (comma-delimited; add more as needed)
+#   AUTH_SECRET     = $(openssl rand -hex 32)   (signs the session cookie)
 
 # 2. Run
 npm install
 npm run dev
-# open http://localhost:3000
+# open http://localhost:3000  → you'll hit the login gate first
 ```
+
+### Access gate
+The site is behind a login (`middleware.ts` → `/login`). Users enter an **email**
+(captured for tracking only — not verified) and a **password**. Valid passwords are
+the comma-delimited **`ACCESS_PASSWORDS`** env var (defaults to `internal_admin`).
+Login sets an HMAC-signed session cookie (7 days) signed with **`AUTH_SECRET`**;
+`/api/trace` is also gated so the GPU can't be hit unauthenticated. To hand out
+access, add a password to `ACCESS_PASSWORDS` and redeploy — no code change.
 
 Requests hit ZeroGPU, which allocates a GPU per call — **the first trace after
 idle is slow** while the 7B model reloads. The UI shows a staged loader for this.
@@ -60,7 +70,12 @@ CI/CD lives in `.github/workflows/`:
 ### One-time setup
 1. Create a Vercel project and link it to this repo (`vercel link`), or import
    the GitHub repo in the Vercel dashboard.
-2. In the Vercel project, add an Environment Variable **`HF_TOKEN`** (encrypted).
+2. In the Vercel project, add Environment Variables (encrypted):
+   - **`HF_TOKEN`** — the HF token for the proxy.
+   - **`AUTH_SECRET`** — `openssl rand -hex 32`. **Required** — without it the session
+     cookie is signed with an insecure fallback and the gate can be bypassed.
+   - **`ACCESS_PASSWORDS`** — comma-delimited passwords (optional; defaults to `internal_admin`).
+   - Changing any env var requires a **redeploy** to take effect.
 3. Add three **GitHub repo secrets** (Settings → Secrets → Actions):
    - `VERCEL_TOKEN` — a Vercel access token
    - `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID` — from `.vercel/project.json` after

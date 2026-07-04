@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Barlow, DM_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
+import { SiteHeader } from "@/components/site-header";
 
 // Eigan type system: Barlow (display/UI), DM Sans (body), JetBrains Mono (data).
 const barlow = Barlow({
@@ -42,6 +43,7 @@ export default function RootLayout({
       className={`${barlow.variable} ${dmSans.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
+        <SiteHeader />
         {children}
         <Toaster />
       </body>
