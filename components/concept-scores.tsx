@@ -2,7 +2,7 @@
 
 import { motion } from "motion/react";
 import type { TraceReport } from "@/lib/spectre";
-import { CONCEPT_THRESHOLDS, CONCEPTS } from "@/lib/spectre";
+import { CONCEPT_THRESHOLDS, SECURITY_CONCEPTS } from "@/lib/spectre";
 import {
   Tooltip,
   TooltipContent,
@@ -20,25 +20,26 @@ const STATE_COLOR: Record<State, string> = {
 };
 
 const STATE_NOTE: Record<State, string> = {
-  alert: "Crossed threshold AND cross-validated by CAZ allocation.",
-  allocated: "Allocated mid-network by CAZ.",
-  faded: "Allocated mid-network, then faded before the output layer.",
+  alert: "Crossed threshold AND cross-validated by GEM instantiation.",
+  allocated: "Instantiated mid-network by GEM.",
+  faded: "Instantiated mid-network, then faded before the output layer.",
   quiet: "Below the cross-validated alert bar.",
 };
 
 export function ConceptScores({ report }: { report: TraceReport }) {
   const scores = report.concept_scores.concept_scores ?? {};
   const alerts = new Set(report.concept_scores.alerts ?? []);
-  const allocated = new Set(report.caz_report.allocated_concepts ?? []);
+  const gemPerConcept = report.gem_report.per_concept ?? {};
   const faded = new Set(report.deep_report.faded_concepts ?? []);
 
-  const rows = CONCEPTS.map(({ key, label }) => {
+  const rows = SECURITY_CONCEPTS.map(({ key, label }) => {
     const score = scores[key] ?? 0;
     const threshold = CONCEPT_THRESHOLDS[key] ?? 0.5;
+    const instantiated = gemPerConcept[key]?.instantiated ?? false;
     let state: State = "quiet";
     if (alerts.has(key)) state = "alert";
     else if (faded.has(key)) state = "faded";
-    else if (allocated.has(key)) state = "allocated";
+    else if (instantiated) state = "allocated";
     return { key, label, score, threshold, state };
   }).sort((a, b) => b.score - a.score);
 

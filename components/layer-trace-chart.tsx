@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
   Line,
   LineChart,
@@ -11,87 +11,122 @@ import {
   YAxis,
 } from "recharts";
 import type { TraceReport } from "@/lib/spectre";
-import { CHART_COLORS } from "@/lib/spectre";
-import { cn } from "@/lib/utils";
+import { CHART_COLORS, SECURITY_CONCEPTS } from "@/lib/spectre";
 
-type Mode = "raw" | "normalised";
+/**
+ * Layer-depth chart, security concepts only (see SECURITY_CONCEPTS — the
+ * general-concept exploratory panel has its own chart). Rebuilt for the
+ * GEM-primary redesign: there's no single global per-layer curve anymore
+ * (that was CAZ's live full-depth scan, removed — CAZ is build-time-only
+ * now). GEM only revisits the small, already-known region(s) CAZ located at
+ * build time, so a concept can have more than one disjoint layer span. Each
+ * (concept, region) pair is its own line, plotted only across that region's
+ * own [start_layer, end_layer] window using live_align (a per-layer cosine
+ * profile) — never connected across the gap to a different region.
+ */
 
-export function LayerTraceChart({ report }: { report: TraceReport }) {
-  const [mode, setMode] = useState<Mode>("raw");
-  const perLayer = report.per_layer_scores ?? {};
-  const layers = report.caz_report.layers_watched ?? [];
-  const concepts = Object.keys(perLayer);
+interface SeriesKey {
+  concept: string;
+  regionIdx: number;
+  dataKey: string;
+  color: string;
+  startLayer: number;
+  endLayer: number;
+  handoffLayer: number;
+}
 
-  const colorFor = useMemo(() => {
-    const m: Record<string, string> = {};
-    concepts.forEach((c, i) => (m[c] = CHART_COLORS[i % CHART_COLORS.length]));
-    return m;
-  }, [concepts]);
+export function LayerTraceChart({
+  report,
+  concepts: conceptList = SECURITY_CONCEPTS,
+}: {
+  report: TraceReport;
+  /** Which concepts to chart — defaults to the 9 security concepts. Pass
+   * GENERAL_CONCEPTS to reuse this same chart for the exploratory panel. */
+  concepts?: { key: string; label: string }[];
+}) {
+  const perConcept = useMemo(
+    () => report.gem_report.per_concept ?? {},
+    [report],
+  );
+
+  const series = useMemo<SeriesKey[]>(() => {
+    const out: SeriesKey[] = [];
+    let colorIdx = 0;
+    for (const { key: concept } of conceptList) {
+      const sig = perConcept[concept];
+      if (!sig || sig.regions.length === 0) continue;
+      const color = CHART_COLORS[colorIdx % CHART_COLORS.length];
+      colorIdx += 1;
+      for (const r of sig.regions) {
+        out.push({
+          concept,
+          regionIdx: r.region_idx,
+          dataKey: `${concept}__r${r.region_idx}`,
+          color,
+          startLayer: r.start_layer,
+          endLayer: r.end_layer,
+          handoffLayer: r.handoff_layer,
+        });
+      }
+    }
+    return out;
+  }, [perConcept, conceptList]);
 
   const data = useMemo(() => {
-    return layers.map((l) => {
-      const row: Record<string, number> = { layer: l };
-      for (const c of concepts) {
-        const curve =
-          mode === "raw"
-            ? perLayer[c].raw_cosine_by_layer
-            : perLayer[c].normalised_curve_by_layer;
-        const v = curve?.[String(l)];
-        if (typeof v === "number") row[c] = v;
-      }
-      return row;
-    });
-  }, [layers, concepts, perLayer, mode]);
+    const byLayer = new Map<number, Record<string, number>>();
+    for (const s of series) {
+      const liveAlign = perConcept[s.concept]?.regions.find(
+        (r) => r.region_idx === s.regionIdx,
+      )?.live_align ?? [];
+      liveAlign.forEach((v, i) => {
+        const layer = s.startLayer + i;
+        const row = byLayer.get(layer) ?? { layer };
+        row[s.dataKey] = v;
+        byLayer.set(layer, row);
+      });
+    }
+    return Array.from(byLayer.values()).sort((a, b) => a.layer - b.layer);
+  }, [series, perConcept]);
 
-  if (concepts.length === 0) {
+  if (series.length === 0) {
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-2 border border-dashed border-[var(--border)] text-center">
         <p className="text-sm text-muted-foreground">
-          No concepts were allocated across the network depth.
+          No regions instantiated across the network depth.
         </p>
         <p className="max-w-sm text-xs text-muted-foreground">
-          The separation curves populate when CAZ allocates at least one concept
-          mid-network — try the Injection or Encoded example.
+          Regions populate when GEM instantiates at least one of these
+          concepts mid-network — try the Injection or Encoded example.
         </p>
       </div>
     );
   }
 
+  const concepts = Array.from(new Set(series.map((s) => s.concept)));
+  const colorForConcept = Object.fromEntries(
+    concepts.map((c) => [c, series.find((s) => s.concept === c)!.color]),
+  );
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        {/* Direct labels, not legend-only (BRAND data-viz rule). */}
-        <div className="flex flex-wrap gap-x-4 gap-y-1">
-          {concepts.map((c) => (
+      {/* Direct labels, not legend-only (BRAND data-viz rule). */}
+      <div className="flex flex-wrap gap-x-4 gap-y-1">
+        {concepts.map((c) => {
+          const regionCount = series.filter((s) => s.concept === c).length;
+          return (
             <span
               key={c}
               className="flex items-center gap-1.5 font-[var(--font-mono)] text-xs"
-              style={{ color: colorFor[c] }}
+              style={{ color: colorForConcept[c] }}
             >
-              <span className="h-2 w-2" style={{ background: colorFor[c] }} />
+              <span className="h-2 w-2" style={{ background: colorForConcept[c] }} />
               {c}
               <span className="text-muted-foreground">
-                @L{perLayer[c].probe_layer}
+                {regionCount} region{regionCount === 1 ? "" : "s"}
               </span>
             </span>
-          ))}
-        </div>
-        <div className="flex overflow-hidden rounded-[2px] border border-[var(--border)]">
-          {(["raw", "normalised"] as Mode[]).map((m) => (
-            <button
-              key={m}
-              onClick={() => setMode(m)}
-              className={cn(
-                "px-3 py-1 font-[var(--font-mono)] text-[0.6875rem] uppercase tracking-wide transition-colors",
-                mode === m
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-transparent text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {m}
-            </button>
-          ))}
-        </div>
+          );
+        })}
       </div>
 
       <div className="h-72 w-full">
@@ -99,6 +134,7 @@ export function LayerTraceChart({ report }: { report: TraceReport }) {
           <LineChart data={data} margin={{ top: 8, right: 12, bottom: 8, left: 0 }}>
             <XAxis
               dataKey="layer"
+              type="number"
               tick={{ fontFamily: "var(--font-mono)", fontSize: 11, fill: "#6b7280" }}
               tickLine={false}
               axisLine={{ stroke: "rgba(27,35,85,0.12)" }}
@@ -114,7 +150,7 @@ export function LayerTraceChart({ report }: { report: TraceReport }) {
               }}
             />
             <YAxis
-              domain={mode === "normalised" ? [0, 1] : ["auto", "auto"]}
+              domain={["auto", "auto"]}
               tick={{ fontFamily: "var(--font-mono)", fontSize: 11, fill: "#6b7280" }}
               tickLine={false}
               axisLine={{ stroke: "rgba(27,35,85,0.12)" }}
@@ -129,46 +165,37 @@ export function LayerTraceChart({ report }: { report: TraceReport }) {
               }}
               labelFormatter={(l) => `layer ${l}`}
             />
-            {concepts.map((c) => (
+            {series.map((s) => (
               <ReferenceLine
-                key={`peak-${c}`}
-                x={perLayer[c].probe_layer}
-                stroke={colorFor[c]}
+                key={`handoff-${s.dataKey}`}
+                x={s.handoffLayer}
+                stroke={s.color}
                 strokeDasharray="2 3"
                 strokeOpacity={0.5}
               />
             ))}
-            {concepts.map((c) => (
+            {series.map((s) => (
               <Line
-                key={c}
+                key={s.dataKey}
                 type="monotone"
-                dataKey={c}
-                stroke={colorFor[c]}
+                dataKey={s.dataKey}
+                stroke={s.color}
                 strokeWidth={2}
                 dot={false}
                 isAnimationActive
                 animationDuration={900}
-                connectNulls
+                connectNulls={false}
               />
             ))}
           </LineChart>
         </ResponsiveContainer>
       </div>
       <p className="text-xs leading-relaxed text-muted-foreground">
-        {mode === "raw" ? (
-          <>
-            <span className="text-foreground">Raw cosine</span> — absolute signal
-            strength on the same scale used for the allocation decision. Compare
-            magnitudes across concepts.
-          </>
-        ) : (
-          <>
-            <span className="text-foreground">Normalised</span> — each curve
-            rescaled to [0,1] for shape and peak location only; magnitudes are not
-            comparable here.
-          </>
-        )}{" "}
-        Dashed verticals mark each concept&apos;s probe layer.
+        <span className="text-foreground">live_align</span> — cosine similarity
+        between the request&apos;s activation and each region&apos;s settled
+        direction, at every layer within that region&apos;s window. Dashed
+        verticals mark each region&apos;s handoff layer (where the direction
+        settles and the instantiation decision is scored).
       </p>
     </div>
   );

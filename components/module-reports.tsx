@@ -2,7 +2,10 @@
 
 import type { ReactNode } from "react";
 import type { TraceReport } from "@/lib/spectre";
+import { SECURITY_CONCEPTS } from "@/lib/spectre";
 import { Card } from "@/components/ui/card";
+
+const SECURITY_KEYS = new Set(SECURITY_CONCEPTS.map((c) => c.key));
 
 function Metric({
   label,
@@ -57,17 +60,17 @@ function ModuleCard({
 
 export function ModuleReports({ report }: { report: TraceReport }) {
   const s = report.surface_report;
-  const c = report.caz_report;
+  const g = report.gem_report;
   const d = report.deep_report;
   const propagated = d.concept_propagated ?? {};
-  const gemAlerts = report.gem_report?.alerts;
-  const gemCorroborated = !Array.isArray(gemAlerts)
-    ? gemAlerts?.corroborated ?? []
-    : [];
-  const gemElevated = !Array.isArray(gemAlerts) ? gemAlerts?.elevated ?? [] : [];
+  const perConcept = g.per_concept ?? {};
+  const conceptKeys = Object.keys(perConcept);
+  const securityKeys = conceptKeys.filter((k) => SECURITY_KEYS.has(k));
+  const instantiatedSecurity = securityKeys.filter((k) => perConcept[k]?.instantiated);
+  const instantiatedTotal = conceptKeys.filter((k) => perConcept[k]?.instantiated);
 
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
       <ModuleCard name="Surface" subtitle="Lexical / tokenization layer">
         <Metric label="surface_clean" value={bool(s.surface_clean)} />
         <Metric
@@ -77,18 +80,6 @@ export function ModuleReports({ report }: { report: TraceReport }) {
         />
         <Metric label="obfuscation_risk" value={num(s.obfuscation_risk)} />
         <Metric label="bpe_anomaly_count" value={s.bpe_anomaly_count ?? "—"} />
-      </ModuleCard>
-
-      <ModuleCard name="CAZ" subtitle="Concept allocation zones">
-        <Metric
-          label="allocated"
-          value={c.allocated_concepts?.length ?? 0}
-          accent={(c.allocated_concepts?.length ?? 0) > 0}
-        />
-        <Metric label="layers_watched" value={c.layers_watched?.length ?? "—"} />
-        {(c.allocated_concepts ?? []).slice(0, 4).map((k) => (
-          <Metric key={k} label={k} value="allocated" />
-        ))}
       </ModuleCard>
 
       <ModuleCard name="Deep" subtitle="Output-layer projection">
@@ -109,22 +100,26 @@ export function ModuleReports({ report }: { report: TraceReport }) {
         <Metric label="faded" value={d.faded_concepts?.length ?? 0} />
       </ModuleCard>
 
-      <ModuleCard name="GEM" subtitle="Trajectory-match signals">
-        {gemCorroborated.length === 0 && gemElevated.length === 0 ? (
+      <ModuleCard name="GEM" subtitle="Live mid-network allocation signal">
+        {conceptKeys.length === 0 ? (
           <p className="py-2 text-xs text-muted-foreground">
-            No GEM signals — probes for the allocated concepts carry no gem_nodes
+            No GEM signals — probes for the scored concepts carry no gem_nodes
             yet. Not an error.
           </p>
         ) : (
           <>
-            <Metric label="corroborated" value={gemCorroborated.length} />
             <Metric
-              label="elevated"
-              value={gemElevated.length}
-              accent={gemElevated.length > 0}
+              label="security instantiated"
+              value={`${instantiatedSecurity.length}/${securityKeys.length}`}
+              accent={instantiatedSecurity.length > 0}
             />
-            {gemElevated.slice(0, 3).map((k) => (
-              <Metric key={k} label={k} value="elevated" />
+            <Metric
+              label="total instantiated"
+              value={`${instantiatedTotal.length}/${conceptKeys.length}`}
+            />
+            <Metric label="layers_watched" value={g.layers_watched?.length ?? "—"} />
+            {instantiatedSecurity.slice(0, 4).map((k) => (
+              <Metric key={k} label={k} value="instantiated" accent />
             ))}
           </>
         )}
