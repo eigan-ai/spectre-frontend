@@ -2,9 +2,23 @@
  * TypeScript contract for the Spectre CIA Trace report.
  *
  * Mirrors the `report` dict returned by `_run_trace_core` in the Space's
- * app.py (endpoint `gr.api(api_name="trace")`). CIA is a *sensor*: these
- * fields describe what the model's forward pass looked like internally, not
- * a judgment on the response.
+ * app.py, called via the Gradio event API (api_name="run_trace" — see
+ * FRONTEND_INTEGRATION.md in the zerogpu-spectre repo for the full
+ * contract). CIA is a *sensor*: these fields describe what the model's
+ * forward pass looked like internally, not a judgment on the response.
+ *
+ * As of the 2026-07-03 GEM-primary Trace redesign, CAZ no longer runs live
+ * (build-time-only — it locates the regions a probe's GEM nodes are
+ * extracted from) so there's no `caz_report`/`per_layer_scores` full-depth
+ * curve anymore. `gem_report` is the live allocation signal and also the
+ * data source for the layer-depth chart (per-region `live_align`).
+ *
+ * `gem_report`/`concept_scores.concept_scores` can carry more concepts than
+ * the 9 SECURITY_CONCEPTS below — the probe may be built with Rosetta's
+ * full 18-concept set (9 security + 9 general-purpose, see
+ * GENERAL_CONCEPTS). `verdict`/`signal`/`concepts_implicated`/
+ * `concept_scores.alerts`/`threat_matches` only ever reflect the 9 security
+ * concepts, regardless of how many are present elsewhere in the report.
  */
 
 export type SignalTier = "enforced" | "observed" | "clean";
@@ -36,11 +50,6 @@ export interface SurfaceReport {
   bpe_anomaly_count?: number;
 }
 
-export interface CazReport {
-  allocated_concepts?: string[];
-  layers_watched?: number[];
-}
-
 export interface DeepReport {
   output_entropy?: number;
   output_layer_risk?: number;
@@ -48,22 +57,43 @@ export interface DeepReport {
   faded_concepts?: string[];
 }
 
-export interface PerLayerConcept {
-  probe_layer: number;
-  raw_cosine_by_layer: Record<string, number>;
-  normalised_curve_by_layer: Record<string, number>;
-}
-
-export type PerLayerScores = Record<string, PerLayerConcept>;
-
 export interface ThreatMatch {
   pattern: string;
   severity: string;
 }
 
+/** One GEM region — a layer span CAZ located at build time, characterized
+ * live by GEM every request. Concepts can have more than one, disjoint. */
+export interface GemRegionDetail {
+  region_idx: number;
+  start_layer: number;
+  end_layer: number;
+  handoff_layer: number;
+  trajectory_threshold: number | null;
+  /** Per-layer cosine profile within [start_layer, end_layer] — the layer
+   * chart's actual data source now that there's no global per-layer curve. */
+  live_align: number[];
+}
+
+export interface ConceptGemSignal {
+  instantiated: boolean;
+  region_scores: number[];
+  aggregate_score: number;
+  instantiated_regions: number[];
+  regions: GemRegionDetail[];
+}
+
 export interface GemReport {
-  per_concept: Record<string, unknown>;
-  alerts: Record<string, string[]> | string[];
+  /** Every instantiated concept, security or general — NOT the same scope
+   * as verdict/signal/concepts_implicated (9 security concepts only). This
+   * is display data (TraceResult.allocated on the backend, deliberately
+   * unfiltered); derive alert/allocated UI state from per_concept[key]
+   * .instantiated for a specific concept instead of assuming this list
+   * implies anything about enforcement. */
+  allocated_concepts: string[];
+  layers_watched: number[];
+  /** Every concept the probe library has a probe for — up to all 18. */
+  per_concept: Record<string, ConceptGemSignal>;
 }
 
 export interface TraceReport {
@@ -76,18 +106,19 @@ export interface TraceReport {
   concept_scores: ConceptScores;
   threat_matches: ThreatMatch[];
   surface_report: SurfaceReport;
-  caz_report: CazReport;
   deep_report: DeepReport;
   gem_report: GemReport;
-  per_layer_scores: PerLayerScores;
   signal: Signal;
 }
 
-/** Team-curated per-concept thresholds (probes/cia-qwen-7b.thresholds.json). */
+/** Team-curated per-concept thresholds (probes/cia-qwen-7b.thresholds.json).
+ * Security concepts only — the 9 general concepts never alert, so they have
+ * no threshold semantics. Keep in sync with that file by hand for now (same
+ * duplication that existed before this change; not solved here). */
 export const CONCEPT_THRESHOLDS: Record<string, number> = {
   causation: 0.6782,
   source_credibility: 0.7774,
-  deceptive_intent: 0.3001,
+  deceptive_intent: 0.42,
   authorization: 0.7272,
   threat_severity: 0.4466,
   urgency: 0.3643,
@@ -96,8 +127,9 @@ export const CONCEPT_THRESHOLDS: Record<string, number> = {
   obfuscation: 0.3569,
 };
 
-/** Stable display order + human labels for the 9 concepts. */
-export const CONCEPTS: { key: string; label: string }[] = [
+/** Stable display order + human labels for the 9 security concepts — the
+ * only ones that can drive a verdict, alert, or threat match. */
+export const SECURITY_CONCEPTS: { key: string; label: string }[] = [
   { key: "authorization", label: "Authorization" },
   { key: "exfiltration", label: "Exfiltration" },
   { key: "deceptive_intent", label: "Deceptive Intent" },
@@ -107,6 +139,24 @@ export const CONCEPTS: { key: string; label: string }[] = [
   { key: "source_credibility", label: "Source Credibility" },
   { key: "causation", label: "Causation" },
   { key: "negation", label: "Negation" },
+];
+
+/** The other 9 of Rosetta's 18 canonical concepts — GEM scores these the
+ * same as the security concepts, but they can never independently or
+ * jointly drive a verdict/alert (spectre_trace.trace.SpectreTrace
+ * .SECURITY_CONCEPTS on the backend). Display-only; no thresholds. Present
+ * in gem_report.per_concept only once the deployed probe has been rebuilt
+ * with all 18 concepts — absent (not zero-filled) until then. */
+export const GENERAL_CONCEPTS: { key: string; label: string }[] = [
+  { key: "agency", label: "Agency" },
+  { key: "certainty", label: "Certainty" },
+  { key: "formality", label: "Formality" },
+  { key: "moral_valence", label: "Moral Valence" },
+  { key: "plurality", label: "Plurality" },
+  { key: "sarcasm", label: "Sarcasm" },
+  { key: "sentiment", label: "Sentiment" },
+  { key: "specificity", label: "Specificity" },
+  { key: "temporal_order", label: "Temporal Order" },
 ];
 
 /** Eigan data-viz palette, in brand-mandated order. */

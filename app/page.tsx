@@ -9,6 +9,7 @@ import { SignalIndicator } from "@/components/signal-indicator";
 import { VerdictPanel } from "@/components/verdict-panel";
 import { ConceptScores } from "@/components/concept-scores";
 import { LayerTraceChart } from "@/components/layer-trace-chart";
+import { GeneralConceptPanel } from "@/components/general-concept-panel";
 import { ModuleReports } from "@/components/module-reports";
 import { RawReport } from "@/components/raw-report";
 import { TraceProgress } from "@/components/trace-progress";
@@ -180,6 +181,11 @@ export default function Home() {
               <div>
                 <SectionLabel>Module reports</SectionLabel>
                 <ModuleReports report={report} />
+              </div>
+
+              <div>
+                <SectionLabel>General concepts (exploratory)</SectionLabel>
+                <GeneralConceptPanel report={report} />
               </div>
 
               <RawReport report={report} />
