@@ -2,7 +2,7 @@
 
 import { motion } from "motion/react";
 import type { TraceReport } from "@/lib/spectre";
-import { CONCEPT_THRESHOLDS, SECURITY_CONCEPTS } from "@/lib/spectre";
+import { SECURITY_CONCEPTS } from "@/lib/spectre";
 import {
   Tooltip,
   TooltipContent,
@@ -28,13 +28,14 @@ const STATE_NOTE: Record<State, string> = {
 
 export function ConceptScores({ report }: { report: TraceReport }) {
   const scores = report.concept_scores.concept_scores ?? {};
+  const thresholds = report.concept_scores.thresholds ?? {};
   const alerts = new Set(report.concept_scores.alerts ?? []);
   const gemPerConcept = report.gem_report.per_concept ?? {};
   const faded = new Set(report.deep_report.faded_concepts ?? []);
 
   const rows = SECURITY_CONCEPTS.map(({ key, label }) => {
     const score = scores[key] ?? 0;
-    const threshold = CONCEPT_THRESHOLDS[key] ?? 0.5;
+    const threshold = thresholds[key] ?? 0.5;
     const instantiated = gemPerConcept[key]?.instantiated ?? false;
     let state: State = "quiet";
     if (alerts.has(key)) state = "alert";
