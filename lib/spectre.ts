@@ -45,6 +45,10 @@ export interface Signal {
 export interface ConceptScores {
   concept_scores: Record<string, number>;
   alerts: string[];
+  /** ConceptProbe.threshold per concept, server-side (already merged with
+   * team-curated .thresholds.json overrides) — the single source of truth.
+   * Carries every concept in the probe, not just the 9 security ones. */
+  thresholds: Record<string, number>;
 }
 
 export interface SurfaceReport {
@@ -115,21 +119,6 @@ export interface TraceReport {
   signal: Signal;
 }
 
-/** Team-curated per-concept thresholds (probes/cia-qwen-7b.thresholds.json).
- * Security concepts only — the 9 general concepts never alert, so they have
- * no threshold semantics. Keep in sync with that file by hand for now (same
- * duplication that existed before this change; not solved here). */
-export const CONCEPT_THRESHOLDS: Record<string, number> = {
-  causation: 0.6782,
-  source_credibility: 0.7774,
-  deceptive_intent: 0.42,
-  authorization: 0.7272,
-  threat_severity: 0.4466,
-  urgency: 0.3643,
-  negation: 0.3262,
-  exfiltration: 0.5618,
-  obfuscation: 0.3569,
-};
 
 /** Stable display order + human labels for the 9 security concepts — the
  * only ones that can drive a verdict, alert, or threat match. */
