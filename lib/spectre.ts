@@ -140,8 +140,8 @@ export interface ModelOption {
  * the Space's own DEFAULT_MODEL_ID so behavior degrades to "just like
  * before multi-model support existed" rather than an empty selector. */
 export const DEFAULT_MODEL: ModelOption = {
-  id: "cia-qwen-7b",
-  display_name: "Qwen2.5-7B-Instruct",
+  id: "qwen2.5-14b-instruct",
+  display_name: "Qwen2.5-14B-Instruct",
 };
 
 
