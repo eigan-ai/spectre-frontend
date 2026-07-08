@@ -40,8 +40,9 @@ export function LayerTraceChart({
   concepts: conceptList = SECURITY_CONCEPTS,
 }: {
   report: TraceReport;
-  /** Which concepts to chart — defaults to the 9 security concepts. Pass
-   * GENERAL_CONCEPTS to reuse this same chart for the exploratory panel. */
+  /** Which concepts to chart — defaults to the 9 fixed security concepts.
+   * Pass generalConcepts(report) to reuse this same chart for the
+   * exploratory panel. */
   concepts?: { key: string; label: string }[];
 }) {
   const perConcept = useMemo(

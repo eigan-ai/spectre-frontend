@@ -14,11 +14,15 @@
  * data source for the layer-depth chart (per-region `live_align`).
  *
  * `gem_report`/`concept_scores.concept_scores` can carry more concepts than
- * the 9 SECURITY_CONCEPTS below — the probe may be built with Rosetta's
- * full 18-concept set (9 security + 9 general-purpose, see
- * GENERAL_CONCEPTS). `verdict`/`signal`/`concepts_implicated`/
- * `concept_scores.alerts`/`threat_matches` only ever reflect the 9 security
- * concepts, regardless of how many are present elsewhere in the report.
+ * the 9 SECURITY_CONCEPTS below — the probe is a data-driven extraction
+ * (spectre/src/build_probes.py:CONCEPTS), not fixed at this frontend, so it
+ * may carry any number of additional concepts. `generalConcepts()` derives
+ * that "everything else" set live from the report. `verdict`/`signal`/
+ * `concepts_implicated`/`concept_scores.alerts`/`threat_matches` only ever
+ * reflect the 9 fixed security concepts, regardless of how many are present
+ * elsewhere in the report — Spectre CIA the security sensor is deliberately
+ * scoped to those 9 only (spectre_trace.trace.SpectreTrace.SECURITY_CONCEPTS
+ * on the backend, an equally fixed allowlist).
  */
 
 export type SignalTier = "enforced" | "observed" | "clean";
@@ -141,23 +145,58 @@ export const SECURITY_CONCEPTS: { key: string; label: string }[] = [
   { key: "negation", label: "Negation" },
 ];
 
-/** The other 9 of Rosetta's 18 canonical concepts — GEM scores these the
- * same as the security concepts, but they can never independently or
- * jointly drive a verdict/alert (spectre_trace.trace.SpectreTrace
- * .SECURITY_CONCEPTS on the backend). Display-only; no thresholds. Present
- * in gem_report.per_concept only once the deployed probe has been rebuilt
- * with all 18 concepts — absent (not zero-filled) until then. */
-export const GENERAL_CONCEPTS: { key: string; label: string }[] = [
-  { key: "agency", label: "Agency" },
-  { key: "certainty", label: "Certainty" },
-  { key: "formality", label: "Formality" },
-  { key: "moral_valence", label: "Moral Valence" },
-  { key: "plurality", label: "Plurality" },
-  { key: "sarcasm", label: "Sarcasm" },
-  { key: "sentiment", label: "Sentiment" },
-  { key: "specificity", label: "Specificity" },
-  { key: "temporal_order", label: "Temporal Order" },
-];
+const SECURITY_CONCEPT_KEYS = new Set(SECURITY_CONCEPTS.map((c) => c.key));
+
+/** Nicer labels for concepts we know about ahead of time (Rosetta's other 9
+ * canonical concepts, as of the 18-concept extraction). Purely cosmetic —
+ * NOT a membership list. Extraction is data-driven (spectre/src/build_probes
+ * .py:CONCEPTS), not fixed at this frontend, so generalConcepts() below
+ * derives the actual set live from whatever the report contains and falls
+ * back to humanizeConceptKey() for anything not listed here. Extend this
+ * map when it's worth a nicer label; the panel works correctly without it. */
+const KNOWN_GENERAL_CONCEPT_LABELS: Record<string, string> = {
+  agency: "Agency",
+  certainty: "Certainty",
+  formality: "Formality",
+  moral_valence: "Moral Valence",
+  plurality: "Plurality",
+  sarcasm: "Sarcasm",
+  sentiment: "Sentiment",
+  specificity: "Specificity",
+  temporal_order: "Temporal Order",
+};
+
+function humanizeConceptKey(key: string): string {
+  return key
+    .split("_")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
+/** Every concept in this report that isn't one of the 9 fixed security
+ * concepts — display-only, can never independently or jointly drive a
+ * verdict/alert (spectre_trace.trace.SpectreTrace.SECURITY_CONCEPTS on the
+ * backend, an equally fixed allowlist by design: CIA the security sensor
+ * only ever acts on those 9, deliberately, regardless of how many more
+ * concepts get extracted). This list, by contrast, is NOT fixed — it grows
+ * automatically as extraction covers more concepts, no frontend change
+ * needed. Sourced from gem_report.per_concept ∪ concept_scores so a concept
+ * shows up here as soon as either is populated for it. */
+export function generalConcepts(
+  report: TraceReport,
+): { key: string; label: string }[] {
+  const keys = new Set([
+    ...Object.keys(report.gem_report.per_concept ?? {}),
+    ...Object.keys(report.concept_scores.concept_scores ?? {}),
+  ]);
+  for (const k of SECURITY_CONCEPT_KEYS) keys.delete(k);
+  return Array.from(keys)
+    .sort()
+    .map((key) => ({
+      key,
+      label: KNOWN_GENERAL_CONCEPT_LABELS[key] ?? humanizeConceptKey(key),
+    }));
+}
 
 /** Eigan data-viz palette, in brand-mandated order. */
 export const CHART_COLORS = [
