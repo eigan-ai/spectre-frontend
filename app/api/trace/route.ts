@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
       token: token as `hf_${string}`,
     });
     const result = await client.predict("/run_trace", [text]);
-    // The Gradio handler returns 10 positional outputs; the last one
+    // The Gradio handler returns 9 positional outputs; the last one
     // (full_output) is json.dumps(report) — the full structured report.
     const outputs = result.data as unknown[];
     const raw = outputs[outputs.length - 1];

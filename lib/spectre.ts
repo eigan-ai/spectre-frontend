@@ -106,6 +106,12 @@ export interface GemReport {
 
 export interface TraceReport {
   input_text: string;
+  /** The model's actual reply — a second, independent generation pass that
+   * never feeds the verdict below. CIA is a sensor, not a guardrail: render
+   * this as its own thing, not as confirmation/refutation of the verdict.
+   * A request can show `injection_detected` and still get a response where
+   * the model declined — that's expected, not a bug. */
+  response: string;
   verdict: VerdictType;
   confidence: number;
   trace_time_ms: number;

@@ -6,6 +6,7 @@ import { ArrowRight, AlertTriangle } from "lucide-react";
 import type { ExamplePrompt, TraceReport } from "@/lib/spectre";
 import { ExamplePrompts } from "@/components/example-prompts";
 import { SignalIndicator } from "@/components/signal-indicator";
+import { ModelResponse } from "@/components/model-response";
 import { VerdictPanel } from "@/components/verdict-panel";
 import { ConceptScores } from "@/components/concept-scores";
 import { LayerTraceChart } from "@/components/layer-trace-chart";
@@ -160,6 +161,11 @@ export default function Home() {
               <div>
                 <SectionLabel>Signal</SectionLabel>
                 <SignalIndicator report={report} />
+              </div>
+
+              <div>
+                <SectionLabel>Model response</SectionLabel>
+                <ModelResponse report={report} />
               </div>
 
               <div className="grid grid-cols-1 gap-14 lg:grid-cols-[1.4fr_1fr]">
