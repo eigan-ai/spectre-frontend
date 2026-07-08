@@ -9,6 +9,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { JsonTree } from "@/components/json-tree";
 import { cn } from "@/lib/utils";
 
 export function RawReport({ report }: { report: TraceReport }) {
@@ -45,9 +46,9 @@ export function RawReport({ report }: { report: TraceReport }) {
         </button>
       </div>
       <CollapsibleContent>
-        <pre className="mt-3 max-h-96 overflow-auto border border-[var(--border-hairline)] bg-[#0f1642] p-4 font-[var(--font-mono)] text-[0.72rem] leading-relaxed text-[#e8eaef]">
-          {json}
-        </pre>
+        <div className="mt-3 max-h-96 overflow-auto border border-[var(--border-hairline)] bg-[#0f1642] p-4 font-[var(--font-mono)] text-[0.72rem] leading-relaxed text-[#e8eaef]">
+          <JsonTree data={report} />
+        </div>
       </CollapsibleContent>
     </Collapsible>
   );
