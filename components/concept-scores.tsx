@@ -10,12 +10,13 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-type State = "alert" | "allocated" | "faded" | "quiet";
+type State = "alert" | "allocated" | "faded" | "marginal" | "quiet";
 
 const STATE_COLOR: Record<State, string> = {
   alert: "var(--signal-enforced)",
   allocated: "var(--eigan-cyan)",
   faded: "var(--signal-observed)",
+  marginal: "var(--muted-foreground)",
   quiet: "var(--eigan-signal-blue)",
 };
 
@@ -23,7 +24,9 @@ const STATE_NOTE: Record<State, string> = {
   alert: "Crossed threshold AND cross-validated by GEM instantiation.",
   allocated: "Instantiated mid-network by GEM.",
   faded: "Instantiated mid-network, then faded before the output layer.",
-  quiet: "Below the cross-validated alert bar.",
+  marginal:
+    "Crossed the raw single-layer threshold, but GEM never confirmed it — not itself an alert. The raw score alone isn't a reliable signal for this concept.",
+  quiet: "Below the raw single-layer threshold.",
 };
 
 export function ConceptScores({ report }: { report: TraceReport }) {
@@ -37,7 +40,12 @@ export function ConceptScores({ report }: { report: TraceReport }) {
     const score = scores[key] ?? 0;
     const threshold = thresholds[key] ?? 0.5;
     const instantiated = gemPerConcept[key]?.instantiated ?? false;
-    let state: State = "quiet";
+    // "marginal" vs "quiet" is a literal score-vs-threshold comparison —
+    // must match what the bar/tick actually render below, or the tooltip
+    // contradicts the visual (the bug this fixes: score past the tick but
+    // tooltip said "below the bar", because that text described GEM
+    // cross-validation, a different signal than the raw threshold shown).
+    let state: State = score >= threshold ? "marginal" : "quiet";
     if (alerts.has(key)) state = "alert";
     else if (faded.has(key)) state = "faded";
     else if (instantiated) state = "allocated";
@@ -91,6 +99,7 @@ export function ConceptScores({ report }: { report: TraceReport }) {
           <Legend color={STATE_COLOR.alert} label="alert" />
           <Legend color={STATE_COLOR.allocated} label="allocated" />
           <Legend color={STATE_COLOR.faded} label="faded" />
+          <Legend color={STATE_COLOR.marginal} label="marginal (uncorroborated)" />
           <span>| vertical tick = threshold</span>
         </div>
       </div>
