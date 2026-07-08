@@ -123,7 +123,26 @@ export interface TraceReport {
   deep_report: DeepReport;
   gem_report: GemReport;
   signal: Signal;
+  /** Which model actually produced this report — see ModelOption / the
+   * model selector. Added alongside multi-model support (2026-07-08). */
+  model_id: string;
 }
+
+/** One entry from the Space's `list_models` endpoint (see
+ * FRONTEND_INTEGRATION.md "Multi-model support"). Fetched live via
+ * /api/models so new models show up here without a frontend redeploy. */
+export interface ModelOption {
+  id: string;
+  display_name: string;
+}
+
+/** Fallback shown before /api/models resolves, and if it fails — matches
+ * the Space's own DEFAULT_MODEL_ID so behavior degrades to "just like
+ * before multi-model support existed" rather than an empty selector. */
+export const DEFAULT_MODEL: ModelOption = {
+  id: "cia-qwen-7b",
+  display_name: "Qwen2.5-7B-Instruct",
+};
 
 
 /** Stable display order + human labels for the 9 security concepts — the

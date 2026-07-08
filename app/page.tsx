@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowRight, AlertTriangle } from "lucide-react";
-import type { ExamplePrompt, TraceReport } from "@/lib/spectre";
+import type { ExamplePrompt, ModelOption, TraceReport } from "@/lib/spectre";
+import { DEFAULT_MODEL } from "@/lib/spectre";
 import { ExamplePrompts } from "@/components/example-prompts";
 import { SignalIndicator } from "@/components/signal-indicator";
 import { ModelResponse } from "@/components/model-response";
@@ -17,6 +18,13 @@ import { TraceProgress } from "@/components/trace-progress";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return <div className="label-system mb-4">{children}</div>;
@@ -28,6 +36,29 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [coldStart, setColdStart] = useState(false);
+  const [models, setModels] = useState<ModelOption[]>([DEFAULT_MODEL]);
+  const [modelId, setModelId] = useState(DEFAULT_MODEL.id);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/models")
+      .then((res) => res.json())
+      .then((data: ModelOption[]) => {
+        if (cancelled || !Array.isArray(data) || data.length === 0) return;
+        setModels(data);
+        // Only adopt the fetched default if the user hasn't already picked
+        // something else (e.g. a fast click before this resolves).
+        setModelId((current) =>
+          data.some((m) => m.id === current) ? current : data[0].id,
+        );
+      })
+      .catch(() => {
+        // Keep the DEFAULT_MODEL fallback already in state.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const run = useCallback(async () => {
     if (!text.trim() || loading) return;
@@ -39,7 +70,7 @@ export default function Home() {
       const res = await fetch("/api/trace", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text, model_id: modelId }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -53,7 +84,7 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  }, [text, loading]);
+  }, [text, loading, modelId]);
 
   const pick = useCallback((e: ExamplePrompt) => {
     setText(e.text);
@@ -71,8 +102,8 @@ export default function Home() {
             See what the model was thinking.
           </h1>
           <p className="mt-5 text-base leading-relaxed text-muted-foreground">
-            Spectre reads the internal geometry of a single forward pass through
-            Qwen2.5-7B and reports the security concepts it allocated across the
+            Spectre reads the internal geometry of a single forward pass and
+            reports the security concepts it allocated across the
             network&apos;s depth — not just what it said. A sensor, not a
             guardrail.
           </p>
@@ -92,15 +123,29 @@ export default function Home() {
           />
           <div className="mt-4 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
             <ExamplePrompts onPick={pick} disabled={loading} />
-            <Button
-              size="lg"
-              onClick={run}
-              disabled={loading || !text.trim()}
-              className="shrink-0"
-            >
-              {loading ? "Tracing…" : "Run Trace"}
-              {!loading && <ArrowRight className="size-4" />}
-            </Button>
+            <div className="flex shrink-0 items-center gap-3">
+              <Select value={modelId} onValueChange={setModelId} disabled={loading}>
+                <SelectTrigger className="w-[220px]">
+                  <SelectValue placeholder="Model" />
+                </SelectTrigger>
+                <SelectContent>
+                  {models.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.display_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                size="lg"
+                onClick={run}
+                disabled={loading || !text.trim()}
+                className="shrink-0"
+              >
+                {loading ? "Tracing…" : "Run Trace"}
+                {!loading && <ArrowRight className="size-4" />}
+              </Button>
+            </div>
           </div>
         </section>
 

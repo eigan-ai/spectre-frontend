@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse, after } from "next/server";
 import { Client } from "@gradio/client";
 import type { TraceReport } from "@/lib/spectre";
+import { DEFAULT_MODEL } from "@/lib/spectre";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth";
 import { notifyTrace } from "@/lib/mattermost";
 
@@ -52,8 +53,9 @@ export async function POST(req: NextRequest) {
   }
 
   let text: unknown;
+  let modelId: unknown;
   try {
-    ({ text } = await req.json());
+    ({ text, model_id: modelId } = await req.json());
   } catch {
     return NextResponse.json(
       { error: "Invalid JSON body.", stage: "bad_request" },
@@ -73,12 +75,21 @@ export async function POST(req: NextRequest) {
       { status: 413 },
     );
   }
+  // Optional — omitting it (or an older client that predates model
+  // selection) falls back to the same default the Space itself defaults to.
+  if (modelId !== undefined && typeof modelId !== "string") {
+    return NextResponse.json(
+      { error: "`model_id` must be a string when provided.", stage: "bad_request" },
+      { status: 400 },
+    );
+  }
+  const resolvedModelId = (modelId as string | undefined) ?? DEFAULT_MODEL.id;
 
   try {
     const client = await Client.connect(SPACE_ID, {
       token: token as `hf_${string}`,
     });
-    const result = await client.predict("/run_trace", [text]);
+    const result = await client.predict("/run_trace", [text, resolvedModelId]);
     // The Gradio handler returns 9 positional outputs; the last one
     // (full_output) is json.dumps(report) — the full structured report.
     const outputs = result.data as unknown[];
@@ -94,7 +105,7 @@ export async function POST(req: NextRequest) {
     const session = await verifySessionToken(req.cookies.get(SESSION_COOKIE)?.value);
     const email = session?.email ?? "unknown";
     console.log(
-      `[trace] email=${email} chars=${text.length} verdict=${report.verdict} tier=${report.signal?.tier}`,
+      `[trace] email=${email} chars=${text.length} model=${report.model_id} verdict=${report.verdict} tier=${report.signal?.tier}`,
     );
     // Emit to Mattermost after the response is sent (no added latency).
     after(() =>
