@@ -2,24 +2,26 @@
 
 import { motion } from "motion/react";
 import type { TraceReport } from "@/lib/spectre";
-import { GENERAL_CONCEPTS } from "@/lib/spectre";
+import { generalConcepts } from "@/lib/spectre";
 import { LayerTraceChart } from "@/components/layer-trace-chart";
 
 /**
- * Exploratory panel for the 9 general-purpose Rosetta concepts (agency,
- * sentiment, sarcasm, ...) — display-only. GEM scores these exactly like
- * the 9 security concepts, but they can never independently or jointly
- * drive a verdict, alert, or threat match (see spectre_trace.trace
- * .SpectreTrace.SECURITY_CONCEPTS on the backend). No threshold/alert
- * semantics here, unlike ConceptScores — just raw score + GEM instantiation.
- * Absent from gem_report.per_concept (not zero-filled) until the deployed
- * probe is rebuilt with all 18 concepts.
+ * Exploratory panel for every concept in the report that isn't one of the 9
+ * fixed security concepts — display-only. GEM scores these exactly like the
+ * security concepts, but they can never independently or jointly drive a
+ * verdict, alert, or threat match (see spectre_trace.trace.SpectreTrace
+ * .SECURITY_CONCEPTS on the backend — that allowlist is fixed by design:
+ * Spectre CIA the security sensor only ever acts on those 9). This panel is
+ * NOT fixed the same way — generalConcepts() derives the set live from
+ * whatever's in the report, so it grows automatically as extraction covers
+ * more concepts, no frontend change needed. No threshold/alert semantics
+ * here, unlike ConceptScores — just raw score + GEM instantiation.
  */
 export function GeneralConceptPanel({ report }: { report: TraceReport }) {
   const scores = report.concept_scores.concept_scores ?? {};
   const perConcept = report.gem_report.per_concept ?? {};
 
-  const present = GENERAL_CONCEPTS.filter(({ key }) => key in scores || key in perConcept);
+  const present = generalConcepts(report);
 
   if (present.length === 0) {
     return (
@@ -28,8 +30,9 @@ export function GeneralConceptPanel({ report }: { report: TraceReport }) {
           No general-concept data in this report.
         </p>
         <p className="max-w-sm text-xs text-muted-foreground">
-          The deployed probe hasn&apos;t been rebuilt with Rosetta&apos;s full
-          18-concept set yet — currently scoring the 9 security concepts only.
+          The deployed probe is currently scoring the 9 security concepts
+          only — this panel populates automatically once it&apos;s rebuilt
+          with any additional concepts.
         </p>
       </div>
     );
@@ -85,7 +88,7 @@ export function GeneralConceptPanel({ report }: { report: TraceReport }) {
         ))}
       </div>
 
-      <LayerTraceChart report={report} concepts={GENERAL_CONCEPTS} />
+      <LayerTraceChart report={report} concepts={present} />
     </div>
   );
 }
