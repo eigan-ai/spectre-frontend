@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse, after } from "next/server";
 import { Client } from "@gradio/client";
 import type { TraceReport } from "@/lib/spectre";
-import { DEFAULT_MODEL } from "@/lib/spectre";
+import { DEFAULT_MODEL, reportDeficiency } from "@/lib/spectre";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth";
 import { notifyTrace } from "@/lib/mattermost";
 
@@ -101,6 +101,25 @@ export async function POST(req: NextRequest) {
       );
     }
     const report = JSON.parse(raw) as TraceReport;
+
+    // The Space can hand back a well-formed report before the model is up —
+    // parses fine, says "clean", contains nothing. Refuse to render or alert
+    // on it; a sensor reporting an all-clear over no data is worse than a
+    // visible error. Treated as a cold start because that's what causes it,
+    // and the UI already offers Retry for that stage.
+    const deficiency = reportDeficiency(report);
+    if (deficiency) {
+      console.warn(`[trace] discarded empty report: ${deficiency}`);
+      return NextResponse.json(
+        {
+          error:
+            "The Space returned an empty trace — no results to report. This usually means the model is still loading.",
+          stage: "cold_start",
+        },
+        { status: 503 },
+      );
+    }
+
     // Attribution: who ran what (email from the signed session).
     const session = await verifySessionToken(req.cookies.get(SESSION_COOKIE)?.value);
     const email = session?.email ?? "unknown";

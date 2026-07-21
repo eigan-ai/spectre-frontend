@@ -187,6 +187,56 @@ function humanizeConceptKey(key: string): string {
     .join(" ");
 }
 
+const VALID_VERDICTS = new Set<string>([
+  "injection_detected",
+  "integrity_expression",
+  "integrity_event",
+  "output_layer_event",
+  "surface_anomaly",
+  "clean",
+]);
+
+const VALID_TIERS = new Set<string>(["enforced", "observed", "clean"]);
+
+/**
+ * Why this report can't be trusted as a trace result, or null if it's sound.
+ *
+ * The Space can return a structurally-valid report before the model is
+ * actually up (ZeroGPU cold start): JSON parses, `verdict` says "clean", and
+ * every panel renders a confident all-clear over nothing at all. That's the
+ * worst failure mode a sensor has — a false negative that looks like a pass.
+ *
+ * The invariant that separates the two: a real `clean` verdict is the
+ * *result of computing* scores that landed below threshold, so it always
+ * carries a full probe output. "Nothing crossed threshold" and "nothing was
+ * computed" are different states and must never render the same way. Empty
+ * concept data is therefore never a legitimate trace, regardless of verdict.
+ */
+export function reportDeficiency(report: unknown): string | null {
+  if (!report || typeof report !== "object") return "not an object";
+  const r = report as Partial<TraceReport>;
+
+  if (typeof r.verdict !== "string" || !VALID_VERDICTS.has(r.verdict)) {
+    return `missing/unknown verdict (${String(r.verdict)})`;
+  }
+  if (typeof r.signal?.tier !== "string" || !VALID_TIERS.has(r.signal.tier)) {
+    return `missing/unknown signal tier (${String(r.signal?.tier)})`;
+  }
+  // The two probe outputs. Either being empty means the forward pass never
+  // produced anything to score — the model wasn't up.
+  if (Object.keys(r.concept_scores?.concept_scores ?? {}).length === 0) {
+    return "no concept scores — probe produced nothing";
+  }
+  if (Object.keys(r.gem_report?.per_concept ?? {}).length === 0) {
+    return "no GEM per-concept output — probe produced nothing";
+  }
+  // Corroborating: the generation pass is the clearest sign the model loaded.
+  if (typeof r.response !== "string" || !r.response.trim()) {
+    return "empty model response — generation did not run";
+  }
+  return null;
+}
+
 /** Every concept in this report that isn't one of the 9 fixed security
  * concepts — display-only, can never independently or jointly drive a
  * verdict/alert (spectre_trace.trace.SpectreTrace.SECURITY_CONCEPTS on the

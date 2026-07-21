@@ -15,7 +15,15 @@ const STAGES = [
   { label: "Synthesizing verdict", detail: "Surface · CAZ · Deep · GEM", ms: 60000 },
 ];
 
-export function TraceProgress({ coldStart }: { coldStart?: boolean }) {
+export function TraceProgress({
+  coldStart,
+  modelName,
+}: {
+  coldStart?: boolean;
+  /** Display name of the selected model, for the warm-up note. Omitted →
+   * generic wording; never hardcode a size here, it's user-selectable. */
+  modelName?: string;
+}) {
   const [stage, setStage] = useState(0);
 
   useEffect(() => {
@@ -68,8 +76,8 @@ export function TraceProgress({ coldStart }: { coldStart?: boolean }) {
       </div>
       {coldStart && (
         <p className="text-xs text-[var(--signal-observed)]">
-          The Space was asleep — the first trace after idle takes longest while
-          the 7B model reloads onto the GPU.
+          The Space was asleep — the first trace after idle takes longest while{" "}
+          {modelName ?? "the model"} reloads onto the GPU.
         </p>
       )}
     </div>

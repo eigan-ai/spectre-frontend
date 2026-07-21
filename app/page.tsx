@@ -65,7 +65,10 @@ export default function Home() {
     setLoading(true);
     setError(null);
     setReport(null);
-    setColdStart(false);
+    // NOTE: `coldStart` is deliberately NOT reset here. If the last attempt
+    // told us the Space was asleep, that's still true while the retry runs —
+    // clearing it up front is exactly when the warm-up hint is most useful.
+    // Cleared on success instead, below.
     try {
       const res = await fetch("/api/trace", {
         method: "POST",
@@ -77,6 +80,7 @@ export default function Home() {
         if (data.stage === "cold_start") setColdStart(true);
         setError(data.error ?? "Trace failed.");
       } else {
+        setColdStart(false); // it's warm now
         setReport(data as TraceReport);
       }
     } catch {
@@ -159,7 +163,10 @@ export default function Home() {
               exit={{ opacity: 0 }}
               className="mt-16 border-t border-[var(--border-hairline)] pt-10"
             >
-              <TraceProgress coldStart={coldStart} />
+              <TraceProgress
+                coldStart={coldStart}
+                modelName={models.find((m) => m.id === modelId)?.display_name}
+              />
             </motion.section>
           )}
 
