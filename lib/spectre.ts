@@ -34,7 +34,12 @@ export type VerdictType =
   | "integrity_event"
   | "output_layer_event"
   | "surface_anomaly"
-  | "clean";
+  | "clean"
+  // Emitted by the Space when the trace crashed mid-analysis — the prompt was
+  // NOT scored. Deliberately absent from VALID_VERDICTS (it is not a renderable
+  // verdict); route.ts intercepts it before reportDeficiency and surfaces it as
+  // a distinct sensor error rather than a cold-start empty report.
+  | "error";
 
 export interface Signal {
   tier: SignalTier;
@@ -126,6 +131,10 @@ export interface TraceReport {
   /** Which model actually produced this report — see ModelOption / the
    * model selector. Added alongside multi-model support (2026-07-08). */
   model_id: string;
+  /** Present only on a fail-closed `error` report from the Space (the trace
+   * did not complete). Carries the failure stage + exception detail so the
+   * frontend can surface a real sensor error instead of a generic retry. */
+  error?: { stage: string; detail: string };
 }
 
 /** One entry from the Space's `list_models` endpoint (see
@@ -296,6 +305,8 @@ export const VERDICT_GLOSS: Record<VerdictType, string> = {
   surface_anomaly:
     "The input surface looks manipulated, but no adverse concept allocated internally.",
   clean: "No adverse internal activity above threshold. Nothing to report.",
+  error:
+    "The trace did not complete — the prompt was not scored. Indeterminate, not clean.",
 };
 
 export interface ExamplePrompt {
