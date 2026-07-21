@@ -114,6 +114,9 @@ export async function POST(req: NextRequest) {
         text,
         verdict: report.verdict,
         tier: report.signal?.tier ?? "unknown",
+        // What actually ran; falls back to what we asked for if the report
+        // omits it (older Space builds predate `model_id`).
+        model: report.model_id ?? resolvedModelId,
         traceMs: report.trace_time_ms,
       }),
     );

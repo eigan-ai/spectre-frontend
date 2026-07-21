@@ -83,6 +83,9 @@ export async function notifyTrace(opts: {
   text: string;
   verdict: string;
   tier: string;
+  /** The model that actually ran the trace (report.model_id), not the one
+   * requested — the Space can fall back to its own default. */
+  model?: string;
   traceMs?: number;
 }): Promise<void> {
   const preview =
@@ -94,6 +97,7 @@ export async function notifyTrace(opts: {
         title: `🔍 Trace · ${opts.tier?.toUpperCase()} · ${opts.verdict}`,
         fields: [
           { short: true, title: "Email", value: opts.email },
+          { short: true, title: "Model", value: opts.model || "—" },
           {
             short: true,
             title: "Trace time",
