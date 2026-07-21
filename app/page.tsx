@@ -97,7 +97,7 @@ export default function Home() {
       <main className="mx-auto w-full max-w-[1200px] flex-1 px-8 py-16 md:py-24">
         {/* Hero — restrained, no gradient. The story is in the data. */}
         <section className="max-w-2xl">
-          <div className="label-system mb-4">Inference Analysis · CIA Trace</div>
+          <div className="label-system mb-4">Inference Analysis · Spectre Trace</div>
           <h1 className="text-4xl font-semibold leading-[1.1] tracking-tight text-foreground md:text-5xl">
             See what the model was thinking.
           </h1>
@@ -265,7 +265,7 @@ export default function Home() {
 
       <footer className="border-t border-[var(--border-hairline)]">
         <div className="mx-auto flex max-w-[1200px] flex-col gap-1 px-8 py-8">
-          <span className="label-system">Eigan · Spectre CIA</span>
+          <span className="label-system">Eigan · Spectre</span>
           <p className="max-w-lg text-xs text-muted-foreground">
             Verdicts describe what the model&apos;s forward pass looked like
             internally. They are not a judgment on whether the response was safe

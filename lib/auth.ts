@@ -1,5 +1,5 @@
 /**
- * Access gate for the Spectre CIA demo.
+ * Access gate for the Spectre demo.
  *
  * The frontend is public, so a lightweight login blocks casual access and
  * lets us attribute usage to an email. Passwords are checked SERVER-SIDE only

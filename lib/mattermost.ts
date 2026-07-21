@@ -48,7 +48,7 @@ async function post(payload: MMPayload): Promise<void> {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        username: "Spectre CIA",
+        username: "Spectre",
         icon_emoji: ":satellite:",
         // Optional override; the webhook already has a default channel.
         channel: process.env.MATTERMOST_CHANNEL || undefined,

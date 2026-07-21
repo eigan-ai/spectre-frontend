@@ -11,7 +11,7 @@ import { LayerTraceChart } from "@/components/layer-trace-chart";
  * security concepts, but they can never independently or jointly drive a
  * verdict, alert, or threat match (see spectre_trace.trace.SpectreTrace
  * .SECURITY_CONCEPTS on the backend — that allowlist is fixed by design:
- * Spectre CIA the security sensor only ever acts on those 9). This panel is
+ * Spectre the security sensor only ever acts on those 9). This panel is
  * NOT fixed the same way — generalConcepts() derives the set live from
  * whatever's in the report, so it grows automatically as extraction covers
  * more concepts, no frontend change needed. No threshold/alert semantics

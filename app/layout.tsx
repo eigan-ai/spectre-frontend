@@ -27,9 +27,9 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Spectre CIA — Inference Trace",
+  title: "Spectre — Inference Trace",
   description:
-    "Watch a model think across its depth. Spectre CIA is a sensor that reads the internal geometry of a single forward pass and reports what the model was computing — not just what it said.",
+    "Watch a model think across its depth. Spectre is a sensor that reads the internal geometry of a single forward pass and reports what the model was computing — not just what it said.",
 };
 
 export default function RootLayout({

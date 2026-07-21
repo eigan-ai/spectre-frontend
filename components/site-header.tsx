@@ -18,7 +18,7 @@ export async function SiteHeader() {
             EIGAN
           </span>
           <span className="h-4 w-px bg-[var(--border)]" />
-          <span className="label-system">Spectre CIA</span>
+          <span className="label-system">Spectre</span>
         </div>
         {session ? (
           <div className="flex items-center gap-4">

@@ -1,10 +1,10 @@
 /**
- * TypeScript contract for the Spectre CIA Trace report.
+ * TypeScript contract for the Spectre Trace report.
  *
  * Mirrors the `report` dict returned by `_run_trace_core` in the Space's
  * app.py, called via the Gradio event API (api_name="run_trace" — see
  * FRONTEND_INTEGRATION.md in the zerogpu-spectre repo for the full
- * contract). CIA is a *sensor*: these fields describe what the model's
+ * contract). Spectre is a *sensor*: these fields describe what the model's
  * forward pass looked like internally, not a judgment on the response.
  *
  * As of the 2026-07-03 GEM-primary Trace redesign, CAZ no longer runs live
@@ -20,7 +20,7 @@
  * that "everything else" set live from the report. `verdict`/`signal`/
  * `concepts_implicated`/`concept_scores.alerts`/`threat_matches` only ever
  * reflect the 9 fixed security concepts, regardless of how many are present
- * elsewhere in the report — Spectre CIA the security sensor is deliberately
+ * elsewhere in the report — Spectre the security sensor is deliberately
  * scoped to those 9 only (spectre_trace.trace.SpectreTrace.SECURITY_CONCEPTS
  * on the backend, an equally fixed allowlist).
  */
@@ -107,7 +107,7 @@ export interface GemReport {
 export interface TraceReport {
   input_text: string;
   /** The model's actual reply — a second, independent generation pass that
-   * never feeds the verdict below. CIA is a sensor, not a guardrail: render
+   * never feeds the verdict below. Spectre is a sensor, not a guardrail: render
    * this as its own thing, not as confirmation/refutation of the verdict.
    * A request can show `injection_detected` and still get a response where
    * the model declined — that's expected, not a bug. */
@@ -190,7 +190,7 @@ function humanizeConceptKey(key: string): string {
 /** Every concept in this report that isn't one of the 9 fixed security
  * concepts — display-only, can never independently or jointly drive a
  * verdict/alert (spectre_trace.trace.SpectreTrace.SECURITY_CONCEPTS on the
- * backend, an equally fixed allowlist by design: CIA the security sensor
+ * backend, an equally fixed allowlist by design: Spectre the security sensor
  * only ever acts on those 9, deliberately, regardless of how many more
  * concepts get extracted). This list, by contrast, is NOT fixed — it grows
  * automatically as extraction covers more concepts, no frontend change

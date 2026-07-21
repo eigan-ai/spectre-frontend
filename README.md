@@ -1,12 +1,12 @@
-# Spectre CIA — Inference Trace (Frontend)
+# Spectre — Inference Trace (Frontend)
 
-A public, investor/demo-facing frontend for the **Spectre CIA Trace** engine. It
+A public, investor/demo-facing frontend for the **Spectre Trace** engine. It
 sends a prompt to a private Hugging Face **ZeroGPU** Gradio Space that runs a
 single forward pass through `Qwen/Qwen2.5-7B-Instruct`, scores 9 security
 concepts, and returns a compound Trace verdict — then renders it as an
 Eigan-branded "watch the model think across its depth" console.
 
-> **CIA is a sensor, not a guardrail.** Verdicts describe what the model's forward
+> **Spectre is a sensor, not a guardrail.** Verdicts describe what the model's forward
 > pass looked like internally — not whether the eventual response was safe.
 > Enforcement is a separate downstream (Sentinel) decision.
 

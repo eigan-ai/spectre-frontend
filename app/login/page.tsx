@@ -44,7 +44,7 @@ function LoginForm() {
 
   return (
     <div className="mx-auto flex min-h-[70vh] w-full max-w-sm flex-col justify-center px-8">
-      <div className="label-system mb-3">Spectre CIA · Access</div>
+      <div className="label-system mb-3">Spectre · Access</div>
       <h1 className="text-3xl font-semibold tracking-tight text-foreground">
         Sign in
       </h1>

@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
  * The model's actual reply — a second, independent generation pass that
  * never feeds the Trace verdict (see lib/spectre.ts:TraceReport.response).
  * Deliberately rendered as its own thing, not gated by or paired against
- * the verdict above: CIA is a sensor, not a guardrail, so a request can
+ * the verdict above: Spectre is a sensor, not a guardrail, so a request can
  * show `injection_detected` and still get a response where the model
  * declined — that's expected, not a contradiction to reconcile in the UI.
  */
