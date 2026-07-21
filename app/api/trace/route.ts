@@ -102,6 +102,28 @@ export async function POST(req: NextRequest) {
     }
     const report = JSON.parse(raw) as TraceReport;
 
+    // A deliberately-emitted `error` verdict is a real sensor failure — the
+    // Space's trace crashed and fenced the result off itself (fail closed,
+    // never green). That is NOT a cold-start empty report, so surface the
+    // actual detail instead of the generic "model is loading" retry, and
+    // never post it to Mattermost. Handled before reportDeficiency because an
+    // error report is intentionally empty and would otherwise be misclassified
+    // as cold_start.
+    if (report.verdict === "error") {
+      const detail =
+        report.error?.detail ??
+        report.evidence?.filter(Boolean).join(" ") ??
+        "the trace did not complete";
+      console.warn(`[trace] sensor error: ${detail}`);
+      return NextResponse.json(
+        {
+          error: `Sensor error — the prompt was not scored (${detail}).`,
+          stage: "sensor_error",
+        },
+        { status: 502 },
+      );
+    }
+
     // The Space can hand back a well-formed report before the model is up —
     // parses fine, says "clean", contains nothing. Refuse to render or alert
     // on it; a sensor reporting an all-clear over no data is worse than a
