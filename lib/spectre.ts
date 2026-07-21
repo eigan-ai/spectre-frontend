@@ -25,8 +25,10 @@
  * on the backend, an equally fixed allowlist).
  */
 
-export type SignalTier = "enforced" | "observed" | "clean";
-export type SignalColor = "red" | "yellow" | "green";
+// `indeterminate` (grey): a load-bearing module could not complete, so the
+// trace ran but could not be fully evaluated. Distinct from `clean`.
+export type SignalTier = "enforced" | "observed" | "clean" | "indeterminate";
+export type SignalColor = "red" | "yellow" | "green" | "grey";
 
 export type VerdictType =
   | "injection_detected"
@@ -35,6 +37,11 @@ export type VerdictType =
   | "output_layer_event"
   | "surface_anomaly"
   | "clean"
+  // A module could not complete (e.g. Deep's LM head unresolved), so the
+  // output layer was not inspected — the trace ran and carries full data, but
+  // the result is unverified, not clean. IS a renderable verdict (grey
+  // readout + degradation note), so it's in VALID_VERDICTS.
+  | "indeterminate"
   // Emitted by the Space when the trace crashed mid-analysis — the prompt was
   // NOT scored. Deliberately absent from VALID_VERDICTS (it is not a renderable
   // verdict); route.ts intercepts it before reportDeficiency and surfaces it as
@@ -203,9 +210,18 @@ const VALID_VERDICTS = new Set<string>([
   "output_layer_event",
   "surface_anomaly",
   "clean",
+  // Renderable: a completed trace whose evaluation was incomplete. Carries
+  // full concept/GEM data, so it passes the emptiness checks below and renders
+  // as a grey readout. (`error` is intentionally NOT here — see VerdictType.)
+  "indeterminate",
 ]);
 
-const VALID_TIERS = new Set<string>(["enforced", "observed", "clean"]);
+const VALID_TIERS = new Set<string>([
+  "enforced",
+  "observed",
+  "clean",
+  "indeterminate",
+]);
 
 /**
  * Why this report can't be trusted as a trace result, or null if it's sound.
@@ -284,12 +300,14 @@ export const SIGNAL_HEX: Record<SignalTier, string> = {
   enforced: "#d4183d",
   observed: "#e8a33d",
   clean: "#3a8f3a",
+  indeterminate: "#6b7280",
 };
 
 export const SIGNAL_TIER_LABEL: Record<SignalTier, string> = {
   enforced: "ENFORCED",
   observed: "OBSERVED",
   clean: "CLEAN",
+  indeterminate: "INDETERMINATE",
 };
 
 /** One-line, investor-legible gloss for each verdict. */
@@ -305,6 +323,8 @@ export const VERDICT_GLOSS: Record<VerdictType, string> = {
   surface_anomaly:
     "The input surface looks manipulated, but no adverse concept allocated internally.",
   clean: "No adverse internal activity above threshold. Nothing to report.",
+  indeterminate:
+    "A module could not complete — the output layer was not inspected, so this trace is unverified, not clean.",
   error:
     "The trace did not complete — the prompt was not scored. Indeterminate, not clean.",
 };

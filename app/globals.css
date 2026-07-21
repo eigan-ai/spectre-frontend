@@ -49,6 +49,9 @@
   --signal-enforced: #d4183d;
   --signal-observed: #e8a33d;
   --signal-clean: #3a8f3a;
+  /* A completed-but-unverified trace (a module could not run). Neutral grey
+     so it reads as "no valid reading", never as the clean green. */
+  --signal-indeterminate: #6b7280;
 }
 
 @theme inline {
@@ -82,6 +85,7 @@
   --color-signal-enforced: var(--signal-enforced);
   --color-signal-observed: var(--signal-observed);
   --color-signal-clean: var(--signal-clean);
+  --color-signal-indeterminate: var(--signal-indeterminate);
 
   --font-display: var(--font-barlow);
   --font-sans: var(--font-dm-sans);
