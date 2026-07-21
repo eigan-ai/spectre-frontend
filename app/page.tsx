@@ -30,6 +30,59 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   return <div className="label-system mb-4">{children}</div>;
 }
 
+/** Explicit load control for the selected model — spends ZeroGPU quota only
+ * on intent, not on browsing. Once loaded it becomes the green "ready" light.
+ * Resets to "Load model" whenever a different model is chosen. */
+function LoadModelButton({
+  status,
+  onLoad,
+  disabled,
+}: {
+  status: "idle" | "loading" | "ready" | "error";
+  onLoad: () => void;
+  disabled?: boolean;
+}) {
+  if (status === "ready") {
+    return (
+      <span
+        className="flex items-center gap-2 font-[var(--font-mono)] text-xs"
+        style={{ color: "var(--signal-clean)" }}
+        aria-live="polite"
+      >
+        <span
+          className="h-2.5 w-2.5 rounded-full"
+          style={{ background: "var(--signal-clean)" }}
+          aria-hidden
+        />
+        model ready
+      </span>
+    );
+  }
+  const label =
+    status === "loading" ? "Loading…" : status === "error" ? "Retry load" : "Load model";
+  const dotColor =
+    status === "loading" ? "var(--signal-observed)" : "var(--signal-enforced)";
+  return (
+    <Button
+      type="button"
+      variant="secondary"
+      size="sm"
+      onClick={onLoad}
+      disabled={disabled || status === "loading"}
+      aria-live="polite"
+    >
+      {status !== "idle" && (
+        <span
+          className={`mr-2 h-2 w-2 rounded-full ${status === "loading" ? "animate-pulse" : ""}`}
+          style={{ background: dotColor }}
+          aria-hidden
+        />
+      )}
+      {label}
+    </Button>
+  );
+}
+
 export default function Home() {
   const [text, setText] = useState("");
   const [report, setReport] = useState<TraceReport | null>(null);
@@ -38,6 +91,12 @@ export default function Home() {
   const [coldStart, setColdStart] = useState(false);
   const [models, setModels] = useState<ModelOption[]>([DEFAULT_MODEL]);
   const [modelId, setModelId] = useState(DEFAULT_MODEL.id);
+  // Whether the selected model is loaded on the Space. Starts "idle" (no
+  // claim); a model switch warms it (loading → ready/error), and a successful
+  // trace also proves it's loaded.
+  const [modelStatus, setModelStatus] = useState<
+    "idle" | "loading" | "ready" | "error"
+  >("idle");
 
   useEffect(() => {
     let cancelled = false;
@@ -81,6 +140,7 @@ export default function Home() {
         setError(data.error ?? "Trace failed.");
       } else {
         setColdStart(false); // it's warm now
+        setModelStatus("ready"); // a completed trace proves the model is loaded
         setReport(data as TraceReport);
       }
     } catch {
@@ -89,6 +149,31 @@ export default function Home() {
       setLoading(false);
     }
   }, [text, loading, modelId]);
+
+  // Pre-load the selected model on the Space so we can show a "ready" light
+  // before the user runs anything. One GPU load per distinct selection; the
+  // Space caches it (a following trace is a no-op load), so this front-loads
+  // the cost rather than adding to it.
+  const warm = useCallback(async (id: string) => {
+    setModelStatus("loading");
+    try {
+      const res = await fetch("/api/warm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model_id: id }),
+      });
+      setModelStatus(res.ok ? "ready" : "error");
+    } catch {
+      setModelStatus("error");
+    }
+  }, []);
+
+  const onModelChange = useCallback((id: string) => {
+    setModelId(id);
+    // Don't auto-warm (that spends GPU quota on browsing). Reset the light so
+    // the user explicitly loads the newly chosen model via the button.
+    setModelStatus("idle");
+  }, []);
 
   const pick = useCallback((e: ExamplePrompt) => {
     setText(e.text);
@@ -128,7 +213,7 @@ export default function Home() {
           <div className="mt-4 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
             <ExamplePrompts onPick={pick} disabled={loading} />
             <div className="flex shrink-0 items-center gap-3">
-              <Select value={modelId} onValueChange={setModelId} disabled={loading}>
+              <Select value={modelId} onValueChange={onModelChange} disabled={loading}>
                 <SelectTrigger className="w-[220px]">
                   <SelectValue placeholder="Model" />
                 </SelectTrigger>
@@ -140,6 +225,11 @@ export default function Home() {
                   ))}
                 </SelectContent>
               </Select>
+              <LoadModelButton
+                status={modelStatus}
+                onLoad={() => warm(modelId)}
+                disabled={loading}
+              />
               <Button
                 size="lg"
                 onClick={run}
