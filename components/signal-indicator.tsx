@@ -6,7 +6,11 @@ import { SIGNAL_HEX, SIGNAL_TIER_LABEL, VERDICT_GLOSS } from "@/lib/spectre";
 
 export function SignalIndicator({ report }: { report: TraceReport }) {
   const tier = report.signal.tier;
-  const hex = SIGNAL_HEX[tier];
+  // Fail closed: an unrecognised tier renders as indeterminate grey, never as
+  // an undefined (invisible) block that could read as a passing signal.
+  const hex = SIGNAL_HEX[tier] ?? SIGNAL_HEX.indeterminate;
+  const tierLabel = SIGNAL_TIER_LABEL[tier] ?? SIGNAL_TIER_LABEL.indeterminate;
+  const gloss = VERDICT_GLOSS[report.verdict] ?? VERDICT_GLOSS.indeterminate;
 
   return (
     <div className="flex flex-col gap-6 md:flex-row md:items-center md:gap-8">
@@ -25,7 +29,7 @@ export function SignalIndicator({ report }: { report: TraceReport }) {
             className="label-system"
             style={{ color: hex, letterSpacing: "0.28em" }}
           >
-            {SIGNAL_TIER_LABEL[tier]}
+            {tierLabel}
           </div>
           <div className="font-[var(--font-mono)] text-xl text-foreground">
             {report.verdict}
@@ -37,7 +41,7 @@ export function SignalIndicator({ report }: { report: TraceReport }) {
 
       <div className="flex flex-1 flex-col gap-2">
         <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
-          {VERDICT_GLOSS[report.verdict]}
+          {gloss}
         </p>
         <div className="flex flex-wrap gap-x-8 gap-y-1 font-[var(--font-mono)] text-xs text-muted-foreground">
           <span>
